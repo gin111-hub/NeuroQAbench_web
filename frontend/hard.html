@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hard Questions · QAbench</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+<main class="page" x-data="hardPage()" x-init="load()">
+
+  <h1>Hard Questions</h1>
+
+  <div class="banner" x-show="data">
+    These questions were missed by <strong>all 4 reference LLMs</strong>
+    (<span x-text="(data?.reference_models || []).map(qbShortModel).join(' · ')"></span>).
+    <br>
+    Please do not use these items for LLM training or evaluation leaderboards without permission.
+  </div>
+
+  <div class="filters" x-show="data">
+    <div class="filter-group">
+      <span class="label-title">Paper</span>
+      <template x-for="opt in paperOpts" :key="opt.slug">
+        <label :class="{ on: selectedPapers.includes(opt.slug) }">
+          <input type="checkbox" :value="opt.slug" x-model="selectedPapers">
+          <span x-text="opt.title + ' (' + opt.count + ')'"></span>
+        </label>
+      </template>
+    </div>
+    <div class="filter-group">
+      <span class="label-title">Bloom</span>
+      <template x-for="opt in bloomOpts" :key="opt">
+        <label :class="{ on: selectedBloom.includes(opt) }">
+          <input type="checkbox" :value="opt" x-model="selectedBloom">
+          <span x-text="opt"></span>
+        </label>
+      </template>
+    </div>
+    <div class="filter-group">
+      <span class="label-title">QA&nbsp;type</span>
+      <template x-for="opt in qaOpts" :key="opt">
+        <label :class="{ on: selectedQa.includes(opt) }">
+          <input type="checkbox" :value="opt" x-model="selectedQa">
+          <span x-text="opt"></span>
+        </label>
+      </template>
+    </div>
+    <span class="count-pill" x-text="filtered.length + ' / ' + data.questions.length"></span>
+  </div>
+
+  <div x-show="!data" style="color: var(--fg-muted);">Loading…</div>
+
+  <template x-for="q in filtered" :key="q.id">
+    <article class="card">
+      <div class="paper-title" x-text="q.paper_title"></div>
+      <div class="question-stem" x-text="q.question_stem"></div>
+      <ol class="options">
+        <template x-for="(opt, i) in q.options" :key="i">
+          <li :class="{ correct: i === q.answer_index }" x-text="opt"></li>
+        </template>
+      </ol>
+      <div class="chips">
+        <span class="chip tag" x-text="q.bloom_level"></span>
+        <span class="chip tag" x-text="q.qa_type"></span>
+        <span class="chip-label">wrong on:</span>
+        <template x-for="m in q.wrong_by_all_models" :key="m">
+          <span class="chip"
+                :class="{ ref: (data?.reference_models || []).includes(m) }"
+                x-text="qbShortModel(m)"></span>
+        </template>
+      </div>
+    </article>
+  </template>
+
+  <div x-show="data && filtered.length === 0" style="color: var(--fg-muted); text-align: center; padding: 40px;">
+    No questions match the current filters.
+  </div>
+
+</main>
+
+<script>
+function hardPage() {
+  return {
+    data: null,
+    selectedPapers: [],
+    selectedBloom: [],
+    selectedQa: [],
+
+    get paperOpts() {
+      if (!this.data) return [];
+      const by = {};
+      this.data.questions.forEach(q => {
+        by[q.paper_slug] = by[q.paper_slug] || { slug: q.paper_slug, title: q.paper_title, count: 0 };
+        by[q.paper_slug].count += 1;
+      });
+      return Object.values(by).sort((a, b) => b.count - a.count);
+    },
+    get bloomOpts() {
+      if (!this.data) return [];
+      return [...new Set(this.data.questions.map(q => q.bloom_level))].sort();
+    },
+    get qaOpts() {
+      if (!this.data) return [];
+      return [...new Set(this.data.questions.map(q => q.qa_type))].sort();
+    },
+    get filtered() {
+      if (!this.data) return [];
+      return this.data.questions.filter(q => {
+        if (this.selectedPapers.length && !this.selectedPapers.includes(q.paper_slug)) return false;
+        if (this.selectedBloom.length && !this.selectedBloom.includes(q.bloom_level)) return false;
+        if (this.selectedQa.length && !this.selectedQa.includes(q.qa_type)) return false;
+        return true;
+      });
+    },
+
+    async load() {
+      try {
+        this.data = await qbFetch("data/hard/hard_index.json");
+      } catch (e) {
+        console.error(e);
+      }
+    },
+  };
+}
+</script>
+</body>
+</html>

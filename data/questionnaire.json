@@ -1,0 +1,47 @@
+{
+  "schema_version": 2,
+  "note": "Single source of truth for the verify-page questionnaire. verify.html, backend/app.py, and scripts/show_submissions.py all read this. Change scale or dimensions here; downstream components adapt automatically (no DB migration needed because responses are stored as a JSON blob).",
+  "scale": {
+    "min": 1,
+    "max": 5,
+    "direction": "higher-is-better",
+    "bad_threshold": 3,
+    "endpoint_labels": {"low": "差", "high": "好"}
+  },
+  "dimensions": [
+    {
+      "key": "q1_correctness",
+      "prompt": "Q1. Correctness — 题干描述、标注的正确答案、以及对应解释背后的事实/知识是否正确？",
+      "anchors": {"low": "关键事实错误，会把读者带偏", "high": "完全正确，专家审读也不会反驳"}
+    },
+    {
+      "key": "q2_importance",
+      "prompt": "Q2. Importance — 若读者是该领域研究生，这道题所考的知识点值得他掌握到什么程度？",
+      "anchors": {"low": "没必要知道", "high": "该方向研究生应掌握的核心内容"}
+    },
+    {
+      "key": "q3_transferability",
+      "prompt": "Q3. Transferability — 答对本题所依赖的知识，是只在这篇 paper 内部才成立的碎片，还是可以带出 paper 的领域知识 / 可复用方法？",
+      "anchors": {"low": "纯 paper-local trivia（具体数据集大小、被试数、本文独有超参、某图某条线的数值）", "high": "清楚的领域知识或可复用方法（某类 bias 的规避手段、某类范式的通用控制变量、某指标的适用场景）"}
+    },
+    {
+      "key": "q4_relevance",
+      "prompt": "Q4. Relevance — 题目考的内容，是否真的在问 paper 里讲过的事实/知识？（而不是只借 paper 的关键词当幌子，实际考 paper 外的知识）",
+      "anchors": {"low": "题目与 paper 无实质联系，或只借壳", "high": "考点明确来自 paper 内容，paper 是回答此题的充分来源"}
+    },
+    {
+      "key": "q5_self_contained",
+      "prompt": "Q5. Self-containedness — 题干 + 选项提供的信息，是否足以让读者在不翻 paper 的情况下看懂题目在问什么？（不是能不能答对，是能不能理解）",
+      "anchors": {"low": "需要在 paper 里反复定位才能明白题在问什么", "high": "一读就懂"}
+    },
+    {
+      "key": "q6_overall",
+      "prompt": "Q6. Overall — 你愿意把这题原样放进正式 benchmark 吗？",
+      "anchors": {"low": "绝不", "high": "原封不动可用"}
+    }
+  ],
+  "comment": {
+    "prompt": "评论（可选）",
+    "max_length": 2000
+  }
+}

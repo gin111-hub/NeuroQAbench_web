@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>QAbench</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main class="landing">
+    <header class="landing-header">
+      <h1>QAbench</h1>
+      <p class="landing-sub">课题组 MCQ benchmark · 从神经科学 paper 自动生成 + 专家校核</p>
+    </header>
+
+    <div class="landing-cards">
+      <a class="landing-card" href="verify.html">
+        <div class="landing-card-head">
+          <span class="landing-card-tag">For experts</span>
+          <h2>Verify</h2>
+        </div>
+        <p class="landing-card-lede">按 paper 逐题评审自动生成的 MCQ，给出 1–5 分的多维度打分。</p>
+        <ul class="landing-card-list">
+          <li>每道题展示题干、4 个选项、预设正确答案与证据片段</li>
+          <li>6 个维度 Likert 评分：Correctness / Importance / Transferability / Relevance / Self-containedness / Overall</li>
+          <li>可选评论框；提交落 SQLite，支持改分后 Update</li>
+        </ul>
+        <span class="landing-card-cta">开始评审 →</span>
+      </a>
+
+      <a class="landing-card" href="hard.html">
+        <div class="landing-card-head">
+          <span class="landing-card-tag">Public showcase</span>
+          <h2>Hard Questions</h2>
+        </div>
+        <p class="landing-card-lede">跨 8 个模型评测中，4 个参考模型（GPT-5.5 / DeepSeek-v4-flash / GLM-5.1 / DeepSeek-v4-pro）全部答错的难题展示。</p>
+        <ul class="landing-card-list">
+          <li>只读页面，无需打分</li>
+          <li>展示每题的正确答案、各模型的回答与命中情况</li>
+          <li>用来定位"自动生成能产出什么样的真·难题"</li>
+        </ul>
+        <span class="landing-card-cta">查看题目 →</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>

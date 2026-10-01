@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "note": "Each entry maps a `source_paper` string (as it appears in savaal's combined json) to a short slug used in URLs and file paths. MVP keeps only the fields needed for display. Add more fields (authors / doi / license / citation) when going live.",
+  "papers": {
+    "brainscuba": {
+      "slug": "brainscuba",
+      "source_paper_key": "BRAINSCUBAFINE-GRAINED NATURAL LANGUAGE",
+      "title": "BRAINSCUBA: Fine-grained Natural Language"
+    },
+    "hippocampal-action-plans": {
+      "slug": "hippocampal-action-plans",
+      "source_paper_key": "Hippocampal neuronal activity is aligned with action plans",
+      "title": "Hippocampal neuronal activity is aligned with action plans"
+    },
+    "eeg-frequency-bands": {
+      "slug": "eeg-frequency-bands",
+      "source_paper_key": "Investigating Critical Frequency Bands and Channels",
+      "title": "Investigating Critical Frequency Bands and Channels"
+    },
+    "nsd-dataset": {
+      "slug": "nsd-dataset",
+      "source_paper_key": "nsd dataset",
+      "title": "NSD Dataset"
+    },
+    "mouse-visual-hierarchy": {
+      "slug": "mouse-visual-hierarchy",
+      "source_paper_key": "Survey of spiking in the mouse visual system reveals functional hierarchy",
+      "title": "Survey of spiking in the mouse visual system reveals functional hierarchy"
+    },
+    "yaghoubi-predictive-coding": {
+      "slug": "yaghoubi-predictive-coding",
+      "source_paper_key": "Yaghoubi 等 - 2026 - Predictive coding of reward in the hippocampus(1)",
+      "title": "Yaghoubi et al. 2026 — Predictive coding of reward in the hippocampus"
+    }
+  }
+}

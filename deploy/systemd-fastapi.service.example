@@ -1,0 +1,35 @@
+# Example systemd unit for the QAbench verify backend.
+#
+# Install:
+#   sudo cp deploy/systemd-fastapi.service.example /etc/systemd/system/qabench-api.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now qabench-api
+#
+# Edit User= / WorkingDirectory= / ExecStart Python interpreter paths first.
+
+[Unit]
+Description=QAbench human-verify FastAPI backend
+After=network.target
+
+[Service]
+Type=simple
+User=jxy
+Group=developers
+WorkingDirectory=/srv/x_to_skills/QAbench/human_verify_web
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/miniconda3/bin/python -m uvicorn backend.app:app \
+    --host 127.0.0.1 --port 8787 \
+    --proxy-headers --forwarded-allow-ips=127.0.0.1 \
+    --log-level info
+Restart=on-failure
+RestartSec=5s
+
+# Lightweight hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=read-only
+ReadWritePaths=/srv/x_to_skills/QAbench/human_verify_web/backend
+
+[Install]
+WantedBy=multi-user.target

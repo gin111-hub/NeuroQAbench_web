@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Verify · QAbench</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/common.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</head>
+<body>
+<main class="page" x-data="verifyPage()" x-init="init()">
+
+  <h1>Verify Questions</h1>
+
+  <div class="banner">
+    This page does <strong>not collect any identifying information</strong>.
+    Your IP and user agent are hashed server-side with a daily-rotating salt and
+    stored only to deter abuse. Pick a paper below and rate each question.
+  </div>
+
+  <div class="paper-select">
+    <label for="paper-sel"><strong>Paper:</strong></label>
+    <select id="paper-sel" x-model="selectedSlug" @change="loadPaper()">
+      <option value="">— choose a paper —</option>
+      <template x-for="p in (index?.papers || [])" :key="p.slug">
+        <option :value="p.slug" x-text="p.title + '  (' + p.n_questions + ')'"></option>
+      </template>
+    </select>
+  </div>
+
+  <div x-show="loadingPaper" style="color: var(--fg-muted);">Loading…</div>
+
+  <template x-if="paper && questionnaire">
+    <div>
+      <div class="progress-pill" x-text="submittedCount + ' / ' + paper.questions.length"></div>
+
+      <template x-for="(q, qi) in paper.questions" :key="q.id">
+        <article class="card">
+          <div class="paper-title">
+            <span x-text="paper.paper_title"></span>
+            <span style="margin-left: 8px; color: var(--fg-muted);">
+              #<span x-text="qi + 1"></span>
+            </span>
+          </div>
+          <div class="question-stem" x-text="q.question_stem"></div>
+          <ol class="options">
+            <template x-for="(opt, i) in q.options" :key="i">
+              <li :class="{ correct: i === q.answer_index }" x-text="opt"></li>
+            </template>
+          </ol>
+
+          <details class="evidence">
+            <summary>Show evidence from source paper</summary>
+            <div class="evidence-content">
+              <div><strong>evidence_from_source:</strong></div>
+              <div x-text="q.evidence_from_source || '(none)'"></div>
+              <div style="margin-top: 8px;"><strong>retrieved_passages:</strong></div>
+              <template x-for="(p, i) in (q.retrieved_passages || [])" :key="i">
+                <div class="passage" x-text="p"></div>
+              </template>
+            </div>
+          </details>
+
+          <!-- Questionnaire: 1..N buttons per dimension, with 差/好 endpoint labels -->
+          <div class="questionnaire">
+            <template x-for="dim in questionnaire.dimensions" :key="dim.key">
+              <div class="q-row">
+                <div class="q-prompt" x-text="dim.prompt"></div>
+                <div class="q-anchors" x-show="dim.anchors">
+                  <span class="q-anchor q-anchor-low">
+                    <b x-text="questionnaire.scale.min + ' = ' + questionnaire.scale.endpoint_labels.low"></b>
+                    <span x-text="dim.anchors && dim.anchors.low"></span>
+                  </span>
+                  <span class="q-anchor q-anchor-high">
+                    <b x-text="questionnaire.scale.max + ' = ' + questionnaire.scale.endpoint_labels.high"></b>
+                    <span x-text="dim.anchors && dim.anchors.high"></span>
+                  </span>
+                </div>
+                <div class="q-opts scale-row">
+                  <span class="scale-end"
+                        x-text="questionnaire.scale.endpoint_labels.low"></span>
+                  <template x-for="n in scaleValues" :key="n">
+                    <label class="scale-btn"
+                           :class="{ sel: forms[q.id][dim.key] === n }"
+                           @click="setField(q.id, dim.key, n)">
+                      <span x-text="n"></span>
+                    </label>
+                  </template>
+                  <span class="scale-end"
+                        x-text="questionnaire.scale.endpoint_labels.high"></span>
+                </div>
+              </div>
+            </template>
+
+            <div class="q-row">
+              <div class="q-prompt" x-text="questionnaire.comment.prompt"></div>
+              <textarea :maxlength="questionnaire.comment.max_length"
+                        :value="forms[q.id].comment"
+                        @input="setField(q.id, 'comment', $event.target.value)"></textarea>
+            </div>
+
+            <div class="submit-row">
+              <button :disabled="isSubmitDisabled(q.id)"
+                      @click="submit(q.id)">
+                <span x-text="submitted[q.id] ? 'Update' : 'Submit'"></span>
+              </button>
+              <span class="submit-status"
+                    :class="{ ok: submitted[q.id] === 'ok', err: submitted[q.id] === 'err' }"
+                    x-text="statusText(q.id)"></span>
+            </div>
+          </div>
+        </article>
+      </template>
+    </div>
+  </template>
+
+</main>
+
+<script>
+function verifyPage() {
+  return {
+    index: null,
+    questionnaire: null,   // loaded from /data/questionnaire.json
+    selectedSlug: "",
+    paper: null,
+    loadingPaper: false,
+
+    // per-question in-progress form state and status
+    forms: {},     // qid -> { <dim.key>: number|null, comment: string }
+    sending: {},   // qid -> bool
+    submitted: {}, // qid -> "ok" | "err" | undefined
+    errors: {},    // qid -> error message
+
+    // computed helpers
+    get submittedCount() {
+      return Object.values(this.submitted).filter(v => v === "ok").length;
+    },
+    get scaleValues() {
+      if (!this.questionnaire) return [];
+      const { min, max } = this.questionnaire.scale;
+      const arr = [];
+      for (let n = min; n <= max; n++) arr.push(n);
+      return arr;
+    },
+
+    async init() {
+      await Promise.all([this.loadIndex(), this.loadQuestionnaire()]);
+    },
+
+    async loadIndex() {
+      try {
+        this.index = await qbFetch("data/verify/index.json");
+      } catch (e) { console.error(e); }
+    },
+
+    async loadQuestionnaire() {
+      try {
+        this.questionnaire = await qbFetch("data/questionnaire.json");
+      } catch (e) { console.error(e); }
+    },
+
+    async loadPaper() {
+      if (!this.selectedSlug || !this.questionnaire) {
+        this.paper = null;
+        return;
+      }
+      this.loadingPaper = true;
+      this.paper = null;
+      try {
+        const doc = await qbFetch(`data/verify/papers/${this.selectedSlug}/questions.json`);
+        // Pre-populate per-question form state keyed off the current questionnaire
+        // (adding keys to a plain {} after x-init can miss Alpine reactivity).
+        const forms = {};
+        for (const q of doc.questions) {
+          const f = { comment: "" };
+          for (const d of this.questionnaire.dimensions) f[d.key] = null;
+          forms[q.id] = f;
+        }
+        this.forms = forms;
+        this.sending = {};
+        this.submitted = {};
+        this.errors = {};
+        this.paper = doc;
+      } catch (e) {
+        console.error(e);
+      } finally {
+        this.loadingPaper = false;
+      }
+    },
+
+    setField(qid, key, value) {
+      // Replace the inner form object wholesale to guarantee Alpine reactivity
+      // for both button `.sel` highlight and the Submit button `:disabled` binding.
+      this.forms = {
+        ...this.forms,
+        [qid]: { ...this.forms[qid], [key]: value },
+      };
+    },
+
+    isComplete(qid) {
+      const f = this.forms[qid];
+      if (!f || !this.questionnaire) return false;
+      return this.questionnaire.dimensions.every(d => typeof f[d.key] === "number");
+    },
+
+    isSubmitDisabled(qid) {
+      if (!this.isComplete(qid)) return true;
+      if (this.sending[qid] === true) return true;
+      return false;
+    },
+
+    statusText(qid) {
+      if (this.sending[qid]) return "sending…";
+      if (this.submitted[qid] === "ok") return "✓ saved";
+      if (this.submitted[qid] === "err") return "error: " + (this.errors[qid] || "");
+      return "";
+    },
+
+    async submit(qid) {
+      if (!this.isComplete(qid)) return;
+      // Shape the payload: {paper_slug, question_id, responses:{<dim>:n,...}, comment}
+      const f = this.forms[qid];
+      const responses = {};
+      for (const d of this.questionnaire.dimensions) responses[d.key] = f[d.key];
+      const payload = {
+        paper_slug: this.paper.paper_slug,
+        question_id: qid,
+        responses,
+        comment: f.comment || null,
+      };
+      this.sending[qid] = true;
+      this.submitted[qid] = undefined;
+      try {
+        const res = await fetch("/api/verify/submit", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: Object.assign(
+            { "Content-Type": "application/json" },
+            window.QB_HEADERS
+          ),
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${detail}`);
+        }
+        this.submitted[qid] = "ok";
+      } catch (e) {
+        this.submitted[qid] = "err";
+        this.errors[qid] = String(e);
+        console.error("verify.submit failed", e);
+      } finally {
+        this.sending[qid] = false;
+      }
+    },
+  };
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+# ---------------------------------------------------------------- runtime
+# SQLite DB + WAL/SHM sidecars. Never commit — contains hashed IPs/UAs,
+# session cookies, and real expert submissions.
+backend/db.sqlite
+backend/db.sqlite-shm
+backend/db.sqlite-wal
+
+# Rotating HMAC salt — if this leaks, old ip_hash/ua_hash become linkable.
+backend/.daily_salt
+
+# DB snapshots from deploy/backup.sh and scripts/reset_submissions.py
+backend/backups/*
+!backend/backups/.gitkeep
+
+# ---------------------------------------------------------------- build products
+# scripts/build.py regenerates these from data/incoming/*; always rebuild locally.
+data/verify/papers/
+data/verify/index.json
+data/hard/hard_index.json
+data/hard/models.json
+
+# scripts/show_submissions.py snapshots — derived from DB, not source.
+data/exports/*
+!data/exports/.gitkeep
+
+# data/incoming/ holds symlinks to savaal outputs that live outside this repo.
+data/incoming/*
+!data/incoming/.gitkeep
+
+# ---------------------------------------------------------------- Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+
+# ---------------------------------------------------------------- editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
